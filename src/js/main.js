@@ -14,6 +14,7 @@ const loader = document.getElementById('loader');
 const imageGallery = document.getElementById('imageGallery');
 const loadMoreButton = document.getElementById('loadMoreButton');
 let currentPage = 1;
+let isNewSearch = false;
 
 
 
@@ -50,6 +51,8 @@ async function searchImages(searchInput, page = 1) {
 document.getElementById('searchForm').addEventListener('submit', async function (event) {
     event.preventDefault();
     const searchInput = document.getElementById('searchInput').value.trim();
+loadMoreButton.style.display = 'none';
+    
 
     if (!searchInput) {
         iziToast.error({
@@ -60,46 +63,59 @@ document.getElementById('searchForm').addEventListener('submit', async function 
         return;
     }
 
+    
+
+     currentPage = 1;
+
     try {
         showLoader();
-        const data = await searchImages(searchInput);
+        const { hits, totalHits } = await searchImages(searchInput);
 
         hideLoader();
+        clearGallery()
+        
 
-        if (data.hits.length > 0) {
-            const imageCardsHTML = data.hits.map(image => `
-                <a href="${image.largeImageURL}" data-lightbox="image-gallery" class="image-card">
-                    <img src="${image.webformatURL}" alt="${image.tags}">
+        if (hits.length > 0) {
+            const imageCardsHTML = hits.map(({ largeImageURL, webformatURL, tags, likes, views, comments, downloads }) => `
+                <a href="${largeImageURL}" data-lightbox="image-gallery" class="image-card">
+                    <img src="${webformatURL}" alt="${tags}">
                     <div class="image-details">
-                        <p><strong>Likes:</strong> ${image.likes}</p>
-                        <p><strong>Views:</strong> ${image.views}</p>
-                        <p><strong>Comments:</strong> ${image.comments}</p>
-                        <p><strong>Downloads:</strong> ${image.downloads}</p>
+                        <p><strong>Likes:</strong> ${likes}</p>
+                        <p><strong>Views:</strong> ${views}</p>
+                        <p><strong>Comments:</strong> ${comments}</p>
+                        <p><strong>Downloads:</strong> ${downloads}</p>
                     </div>
                 </a>
             `).join('');
 
-            imageGallery.innerHTML = imageCardsHTML;
+            imageGallery.insertAdjacentHTML('beforeend', imageCardsHTML);
             simpleLightbox.refresh();
             
            
-
+            if(totalHits > currentPage * 40 && hits.length >= 40)
+{
             loadMoreButton.style.display = 'block';
-            loadMoreButton.addEventListener('click', loadMoreImages);
+            loadMoreButton.addEventListener('click', loadMoreImages);  }
+            
         }
         
         else {
+            loadMoreButton.style.display = 'none';
+
             iziToast.error({
                 title: 'Error',
                 message: 'Sorry, there are no images matching your search query. Please try again.',
                 position: 'topCenter',
             });
+            
         }
     }
         catch (error) {
         console.error('Error:', error);
     }
-});
+
+        
+}  );
 
 async function loadMoreImages() {
     try {
@@ -108,42 +124,43 @@ async function loadMoreImages() {
         showLoader();
         currentPage++;
         const searchInput = document.getElementById('searchInput').value.trim();
-        const data = await searchImages(searchInput, currentPage);
+        const { hits, totalHits } = await searchImages(searchInput, currentPage);
 
         hideLoader();
 
-        if (data.hits.length > 0) {
-            const imageCardsHTML = data.hits.map(image => `
-                <a href="${image.largeImageURL}" data-lightbox="image-gallery" class="image-card">
-                    <img src="${image.webformatURL}" alt="${image.tags}">
+        if (hits.length > 0) {
+            const imageCardsHTML = hits.map(({ largeImageURL, webformatURL, tags, likes, views, comments, downloads }) => `
+                <a href="${largeImageURL}" data-lightbox="image-gallery" class="image-card">
+                    <img src="${webformatURL}" alt="${tags}">
                     <div class="image-details">
-                        <p><strong>Likes:</strong> ${image.likes}</p>
-                        <p><strong>Views:</strong> ${image.views}</p>
-                        <p><strong>Comments:</strong> ${image.comments}</p>
-                        <p><strong>Downloads:</strong> ${image.downloads}</p>
+                        <p><strong>Likes:</strong> ${likes}</p>
+                        <p><strong>Views:</strong> ${views}</p>
+                        <p><strong>Comments:</strong> ${comments}</p>
+                        <p><strong>Downloads:</strong> ${downloads}</p>
                     </div>
                 </a>
             `).join('');
 
             
-            imageGallery.innerHTML += imageCardsHTML;
+            imageGallery.insertAdjacentHTML('beforeend', imageCardsHTML);
             simpleLightbox.refresh();
 
              const cardHeight = document.querySelector('.image-card').getBoundingClientRect().height;
             
              window.scrollBy({
-                top: 2 * cardHeight,
+                top: 4 * cardHeight,
                 behavior: 'smooth'
             });
         }
 
-         if (data.totalHits > currentPage * 40) {
+         if (totalHits > currentPage * 40 && hits.length >= 40) {
                 
             loadMoreButton.style.display = 'block';
          }
           else {
                
-                loadMoreButton.style.display = 'none';
+             loadMoreButton.style.display = 'none';
+             
                 iziToast.info({
                     title: 'End of Search Results',
                     message: "We're sorry, but you've reached the end of search results.",
@@ -156,3 +173,7 @@ async function loadMoreImages() {
         console.error('Error:', error);
     }
 }
+
+document.getElementById('searchForm').addEventListener('submit', function () {
+    isNewSearch = true;
+});
